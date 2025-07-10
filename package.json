@@ -2,7 +2,7 @@
   "name": "utube-backend",
   "version": "1.0.0",
   "description": "backend of utube",
-  "type" : "module",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "dev": "nodemon src/index.js"
@@ -21,5 +21,8 @@
   "bugs": {
     "url": "https://github.com/Vaibhavi-Bhosale/utube-backend/issues"
   },
-  "homepage": "https://github.com/Vaibhavi-Bhosale/utube-backend#readme"
+  "homepage": "https://github.com/Vaibhavi-Bhosale/utube-backend#readme",
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  }
 }
