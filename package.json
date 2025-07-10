@@ -1,0 +1,25 @@
+{
+  "name": "utube-backend",
+  "version": "1.0.0",
+  "description": "backend of utube",
+  "type" : "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Vaibhavi-Bhosale/utube-backend.git"
+  },
+  "keywords": [
+    "javascript",
+    "backend",
+    "vaibhavi"
+  ],
+  "author": "Vaibhavi Bhosale",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Vaibhavi-Bhosale/utube-backend/issues"
+  },
+  "homepage": "https://github.com/Vaibhavi-Bhosale/utube-backend#readme"
+}
