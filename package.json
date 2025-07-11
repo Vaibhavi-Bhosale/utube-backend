@@ -24,5 +24,10 @@
   "homepage": "https://github.com/Vaibhavi-Bhosale/utube-backend#readme",
   "devDependencies": {
     "prettier": "^3.6.2"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "mongoose": "^8.16.3"
   }
 }
