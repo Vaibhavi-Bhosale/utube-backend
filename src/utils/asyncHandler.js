@@ -6,4 +6,4 @@ const asynHandler = (requestHandler)=>{
     }
 }
 
-export {asynHandler}
+export {asynHandler} 
