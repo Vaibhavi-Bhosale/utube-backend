@@ -1,10 +1,11 @@
-import { asynHandler } from "../utils/asyncHandler.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 import {ApiErrors} from "../utils/apiErrors.js"
 import {User} from "../models/user.model.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiResponce.js";
 import jsonwebtoken from "jsonwebtoken";
 import jwt from "jsonwebtoken"
+import req from "express/lib/request.js";
 
 const generateAccessTokenAndRefreshToken =async (userId)=>{
      try{
@@ -23,7 +24,7 @@ const generateAccessTokenAndRefreshToken =async (userId)=>{
      }
 }
 
-const registerUser = asynHandler(async (req, res) => {
+const registerUser = asyncHandler(async (req, res) => {
     // take data from frontend
     // validate data -notnull
     // check if user already exit
@@ -105,7 +106,7 @@ const registerUser = asynHandler(async (req, res) => {
 });
 
 
-const loginUser = asynHandler(async (req, res)=>{
+const loginUser = asyncHandler(async (req, res)=>{
      //1. check if access token is there
      //2. if not then get it again using refresh token
      //3. if refreshToken is expire then take login creditials 
@@ -169,7 +170,7 @@ const loginUser = asynHandler(async (req, res)=>{
 
 })
 
-const logoutUser = asynHandler(async (req, res)=>{
+const logoutUser = asyncHandler(async (req, res)=>{
    const userId =  req.user._id;
 
    await User.findByIdAndUpdate(userId,
@@ -197,7 +198,7 @@ const logoutUser = asynHandler(async (req, res)=>{
         ))
 })
 
-const refreshAccessToken = asynHandler(async (req, res)=>{
+const refreshAccessToken = asyncHandler(async (req, res)=>{
 
      const incommingRefreshToken =  req.cookie.refreshToken || req.body.refreshToken
 
@@ -226,7 +227,7 @@ const refreshAccessToken = asynHandler(async (req, res)=>{
             secure : true
         }
     
-      const {accessToken,newRefreshToken:refreshToken} = await generateAccessTokenAndRefreshToken(user._id)
+      const {accessToken,newRefreshToken=refreshToken} = await generateAccessTokenAndRefreshToken(user._id)
     
         return res
         .status(200)
@@ -245,4 +246,101 @@ const refreshAccessToken = asynHandler(async (req, res)=>{
         throw new ApiErrors(401, error?.message || "Invalid refresh Token")
     }
 })
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+
+const changeCurrentPasssword = asyncHandler(async(req, res)=>
+{
+   //1. Take Email/username
+   //2. check email/username is exsting
+   //3. take old password
+   //4. varify old password is correct
+   //5. take new password
+   //6. store it with encoding it in database
+   //7. logout from all device by deleting refresh and access token
+
+   const {oldPassword, newPassword} = req.body
+
+   const user = await User.findById(req.user._id);
+
+   const isPasswordCorrect =await user.isPasswordCorrect(oldPassword);
+
+   if(!isPasswordCorrect)
+   {
+      throw new ApiErrors(400, "Password is incorrect")
+   }
+
+   user.password = newPassword;
+   await user.save({validation : false});
+
+   return res
+   .status(200)
+   .json(
+    new ApiResponse(
+     "200",
+     {},
+     "Password change Successfully "
+    ))
+})
+
+const updateAccountDetail = asyncHandler(async(req,res)=>{
+    const {fullname, email} = req.body
+
+    if(!(fullname || email))
+    {
+        throw new ApiErrors(401, "fullname and email both are required ");
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set : {
+                fullname,
+                email
+            }
+        }
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(
+        ApiResponse(
+            200,
+            user,
+            "Account detail updatad successfully"
+        )
+    )
+})
+
+const getCurrentUser = asyncHandler(async(req, res)=>{
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        req.user,
+        "current user fetched successfully"
+    ))
+})
+
+const updateUserAvatar = asyncHandler(async(req, res)=>{
+    //1. check user is login
+    //2. take a image from user
+    //3. save at local using mmulter
+    //4. upload it at clodinary
+    //5. delate old image
+    //6. update the image link from the database
+    
+    const avatarLocalPath = req.file?.path;
+
+    if(avatarLocalPath)
+    {
+        throw new ApiErrors(400, "Avtar file is missing")
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+    if(avatar)
+    {
+        throw new ApiErrors(400, "Error while Uploading on Avatar")
+    }
+})
+
+export { registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPasssword,updateAccountDetail, getCurrentUser };
