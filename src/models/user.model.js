@@ -82,6 +82,7 @@ userSchema.methods.generateRefreshToken = function(){
       return jwt.sign(
       {
         _id : this.id,
+         tokenId: Date.now()
       },
       process.env.REFRESH_TOKEN_SECRET,
       {

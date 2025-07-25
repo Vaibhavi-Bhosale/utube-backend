@@ -200,7 +200,7 @@ const logoutUser = asyncHandler(async (req, res)=>{
 
 const refreshAccessToken = asyncHandler(async (req, res)=>{
 
-     const incommingRefreshToken =  req.cookie.refreshToken || req.body.refreshToken
+     const incommingRefreshToken =  req.cookies.refreshToken || req.body.refreshToken
 
      if(!incommingRefreshToken)
      {
@@ -227,14 +227,19 @@ const refreshAccessToken = asyncHandler(async (req, res)=>{
             secure : true
         }
     
-      const {accessToken,newRefreshToken=refreshToken} = await generateAccessTokenAndRefreshToken(user._id)
+      const {accessToken, refreshToken: newRefreshToken} = await generateAccessTokenAndRefreshToken(user._id)
     
+        
+
+        user.refreshToken = newRefreshToken;
+       await user.save()
+
         return res
         .status(200)
         .cookie("refreshToken",newRefreshToken,options)
         .cookie("accessToken",accessToken,options)
         .json(
-            new ApiResponce(200,
+            new ApiResponse(200,
                 {
                    newRefreshToken,
                    accessToken
@@ -320,14 +325,39 @@ const getCurrentUser = asyncHandler(async(req, res)=>{
     ))
 })
 
+const updateUserCoverImage = asyncHandler(async(req, res)=>{
+    const coverImageLocalPath = req.file?.path;
+
+    if(coverImageLocalPath)
+    {
+        throw new ApiErrors(400, "Cover image file is missing")
+    }
+
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+    if(coverImage)
+    {
+        throw new ApiErrors(400, "Error while Uploading on Cover Image")
+    }
+
+   const user =  await findByIdAndUpdate(
+       req.user?._id,
+       {
+          $set: {
+             coverImage : coverImage.url
+          }
+       },
+       {new:true}
+
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, user, "Cover Image updated successfully")
+    )
+})
 const updateUserAvatar = asyncHandler(async(req, res)=>{
-    //1. check user is login
-    //2. take a image from user
-    //3. save at local using mmulter
-    //4. upload it at clodinary
-    //5. delate old image
-    //6. update the image link from the database
-    
     const avatarLocalPath = req.file?.path;
 
     if(avatarLocalPath)
@@ -341,6 +371,27 @@ const updateUserAvatar = asyncHandler(async(req, res)=>{
     {
         throw new ApiErrors(400, "Error while Uploading on Avatar")
     }
+
+   const user =  await findByIdAndUpdate(
+       req.user?._id,
+       {
+          $set: {
+            avatar : avatar.url
+          }
+       },
+       {new:true}
+
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, user, "Avtar updated successfully")
+    )
+
+    //TODO: Deleting Image from clodinary--make saperate utility function for it
 })
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPasssword,updateAccountDetail, getCurrentUser };
+
+
+export { registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPasssword,updateAccountDetail, getCurrentUser, updateUserCoverImage, updateUserAvatar };
