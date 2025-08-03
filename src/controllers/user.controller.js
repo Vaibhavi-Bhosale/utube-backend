@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import {ApiErrors} from "../utils/apiErrors.js"
 import {User} from "../models/user.model.js"
-import {uploadOnCloudinary} from "../utils/cloudinary.js"
+import {uploadOnCloudinary, deleteFromCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiResponce.js";
 import jsonwebtoken from "jsonwebtoken";
 import jwt from "jsonwebtoken"
@@ -69,10 +69,11 @@ const registerUser = asyncHandler(async (req, res) => {
         
         const avatar = await uploadOnCloudinary(avatarLocalPath)
        
-    const coverImage = null;
+    let coverImage = null;
     if(coverImageLocalPath !== "")
     {
         coverImage = await uploadOnCloudinary(coverImageLocalPath)
+         
     }
 
     if(!avatar)
@@ -84,7 +85,9 @@ const registerUser = asyncHandler(async (req, res) => {
    const user = await User.create({
         fullname,
         avatar : avatar.url,
+        avatarPublicId : avatar.public_id,
         coverImage : coverImage?.url || "",
+        coverImagePublicId : coverImage?.public_id || "",
         email,
         password,
         username : username 
@@ -307,7 +310,7 @@ const updateAccountDetail = asyncHandler(async(req,res)=>{
     return res
     .status(200)
     .json(
-        ApiResponse(
+        new ApiResponse(
             200,
             user,
             "Account detail updatad successfully"
@@ -328,28 +331,46 @@ const getCurrentUser = asyncHandler(async(req, res)=>{
 const updateUserCoverImage = asyncHandler(async(req, res)=>{
     const coverImageLocalPath = req.file?.path;
 
-    if(coverImageLocalPath)
+    if(!coverImageLocalPath)
     {
         throw new ApiErrors(400, "Cover image file is missing")
     }
 
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
-    if(coverImage)
+    if(!coverImage)
     {
         throw new ApiErrors(400, "Error while Uploading on Cover Image")
     }
-
-   const user =  await findByIdAndUpdate(
-       req.user?._id,
-       {
-          $set: {
+    const user =  await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
              coverImage : coverImage.url
-          }
-       },
-       {new:true}
-
+            }
+        },
+        {new:true}
+        
     ).select("-password")
+    
+    const deleteResult = deleteFromCloudinary(user?.coverImagePublicId)
+
+     if(!deleteResult)
+     {
+        throw new ApiErrors(401, "Error while Deleting old image from the cludinary")
+     }  
+
+      await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+             coverImagePublicId : coverImage.public_id
+            }
+        },
+        {new:true}
+        
+    ).select("-password")
+
 
     return res
     .status(200)
@@ -357,41 +378,136 @@ const updateUserCoverImage = asyncHandler(async(req, res)=>{
         new ApiResponse(200, user, "Cover Image updated successfully")
     )
 })
+
 const updateUserAvatar = asyncHandler(async(req, res)=>{
     const avatarLocalPath = req.file?.path;
 
-    if(avatarLocalPath)
+    if(!avatarLocalPath)
     {
-        throw new ApiErrors(400, "Avtar file is missing")
+        throw new ApiErrors(400, "Avatar image file is missing")
     }
 
     const avatar = await uploadOnCloudinary(avatarLocalPath)
 
-    if(avatar)
+    if(!avatar)
     {
         throw new ApiErrors(400, "Error while Uploading on Avatar")
     }
-
-   const user =  await findByIdAndUpdate(
-       req.user?._id,
-       {
-          $set: {
-            avatar : avatar.url
-          }
-       },
-       {new:true}
-
+    const user =  await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+             avatar : avatar.url
+            }
+        },
+        {new:true}
+        
     ).select("-password")
+    
+    const deleteResult = deleteFromCloudinary(user?.avatarPublicId)
+
+     if(!deleteResult)
+     {
+        throw new ApiErrors(401, "Error while Deleting old image from the cludinary")
+     }  
+
+      await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+             avatarPublicId : avatar.public_id
+            }
+        },
+        {new:true}
+        
+    ).select("-password")
+
 
     return res
     .status(200)
     .json(
-        new ApiResponse(200, user, "Avtar updated successfully")
+        new ApiResponse(200, user, "Avatar updated successfully")
     )
+})
 
-    //TODO: Deleting Image from clodinary--make saperate utility function for it
+const getUserChannelProfile = asyncHandler(async (req, res)=>{
+   const username = req.params;
+
+   if(!username?.trime())
+   {
+     throw new ApiErrors(400, "Username is not missing")
+   }
+
+   const channel = await User.aggrigate([
+       {
+          $match:{
+            username :  username?.toLowerCase()
+          } 
+       },
+       {
+           $lookup :{
+              from : "subscriptions",
+              localFeild : "channel",
+              foreingFeild : "_id",
+              as : "subscriber"
+           }
+       },
+       {
+           $lookup :{
+              from : "subscriptions",
+              localFeild : "subscriber",
+              foreingFeild : "_id",
+              as : "subscribedTo"
+           }
+       },
+       {
+           $addFeilds : {
+              subsciberCount : {
+                  $size : "$subscriber"
+              },
+              channelSubscribedToCount : {
+                 $size : "$subscribedTo"
+              },
+              isSubscribe : {
+                 $cond : {
+                    $if : {  $in : [req.user?._id, "$subscribers.subscriber"]},
+                    $then : true,
+                    $else : false
+                 }
+              }
+           }
+       },
+       {
+           $projection : {
+              fullname :1,
+              email: 1,
+              subsciberCount : 1,
+              channelSubscribedToCount :1,
+              isSubscribe : 1,
+              avatart : 1,
+              coverImage : 1
+
+           }
+       }
+
+   ])
+
+   if(!channel?.length)
+   {
+      throw new ApiErrors(404, "No Cannel Exist")
+   }
+
+   return res
+   .status(200)
+   .json(
+      new ApiResponse(200, channel[0], "User channel fetch successfully")
+   )
+})
+
+const getWacthHistory = asyncHandler(async (req, res)=>{
+     //to easy for me
 })
 
 
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPasssword,updateAccountDetail, getCurrentUser, updateUserCoverImage, updateUserAvatar };
+export { registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPasssword,updateAccountDetail, getCurrentUser, updateUserCoverImage, updateUserAvatar,getUserChannelProfile, getWacthHistory };
