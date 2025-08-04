@@ -39,7 +39,7 @@ router.route("/register").post(
           updateUserCoverImage)
 
     router.route("/update-user-avatar").
-    pacth(verifyJWT,
+    patch(verifyJWT,
           upload.single("avatar"),
           updateUserAvatar)
 
