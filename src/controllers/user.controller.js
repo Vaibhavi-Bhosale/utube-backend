@@ -474,7 +474,7 @@ const getWacthHistory = asyncHandler(async (req, res) => {
 
     const user= await User.aggregate([
         {
-            $match: { _id: new mongoose.Types.ObjectId(req.params.user._id) },
+            $match: { _id: new mongoose.Types.ObjectId(req.user._id) },
         },
         {
             $lookup: {
@@ -483,7 +483,7 @@ const getWacthHistory = asyncHandler(async (req, res) => {
                 foreignField: "_id",
                 as: "watchHistory",
 
-                $pipeline: [
+                pipeline: [
                     {
                         $lookup: {
                             from: "users",
@@ -491,7 +491,7 @@ const getWacthHistory = asyncHandler(async (req, res) => {
                             foreignField: "_id",
                             as: "owner",
 
-                            $pipeline: [
+                            pipeline: [
                                 {
                                     $project: {
                                         fullname: 1,
@@ -515,10 +515,10 @@ const getWacthHistory = asyncHandler(async (req, res) => {
     ]);
 
     return res
-    .status(200),
-    json(
+    .status(200)
+    .json(
            
-         new ApiResponse(200, user[0].watchHistory, "Wacth History Fetch Succefuly")
+         new ApiResponse(200, user[0]?.watchHistory, "Wacth History Fetch Succefuly")
     )
 });
 
