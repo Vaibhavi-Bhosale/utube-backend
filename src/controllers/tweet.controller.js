@@ -33,15 +33,40 @@ const createTweet = asyncHandler(async (req, res) => {
 })
 
 const getUserTweets = asyncHandler(async (req, res) => {
-    // TODO: get user tweets
-
     const userId = req.params.userId;
     
-    const allTweet = await Tweet.find({owner:userId}).
-    
-    if(!allTweet)
+    const allTweet = await Tweet.aggregate([
+         {
+            $match : {
+                owner : new mongoose.Types.ObjectId(userId)
+            }
+         },
+         {
+            $lookup: {
+                from : "users",
+                localField : "owner",
+                foreignField : "_id",
+                as: "ownerDetails"
+            }
+         },
+         {
+            $unwind : "$ownerDetails"
+         },
+        { 
+            $project : {
+                content : 1,
+                createdAt :1,
+                "ownerDetails.username" : 1,
+                "ownerDetails.avatar" : 1,
+                "ownerDetails.fullname" : 1,
+
+            }
+        }
+    ])
+        
+    if(allTweet.length === 0)
     {
-        throw ApiErrors(404, "No tweet Found for this user")
+        throw new ApiErrors(404, "No tweet Found for this user")
     }
     
     return res
@@ -56,15 +81,14 @@ const getUserTweets = asyncHandler(async (req, res) => {
 })
 
 const updateTweet = asyncHandler(async (req, res) => {
-    //TODO: update tweet
 
     const userId = req.user._id;
     const {tweetId} = req.params;
 
     const {content} = req.body
 
-    const updatedTweet = await Tweet.findByIdAndUpdate(
-        { _id: tweetId },
+    const updatedTweet = await Tweet.findOneAndUpdate(
+        {  _id: tweetId, owner: userId },
         { content: content },
         { new: true }
     );
@@ -85,7 +109,6 @@ const updateTweet = asyncHandler(async (req, res) => {
 })
 
 const deleteTweet = asyncHandler(async (req, res) => {
-    //TODO: delete tweet
 
     const userId = req.user._id;
     const {tweetId} = req.params
