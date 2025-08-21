@@ -2,22 +2,22 @@ import mongoose from "mongoose"
 import {Video} from "../models/video.model.js"
 import {Subscription} from "../models/subscription.model.js"
 import {Like} from "../models/like.model.js"
-import {ApiError} from "../utils/ApiError.js"
-import {ApiResponse} from "../utils/ApiResponse.js"
+import {ApiErrors} from "../utils/apiErrors.js"
+import {ApiResponse} from "../utils/apiResponce.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 
 const getChannelStats = asyncHandler(async (req, res) => {
     // TODO: Get the channel stats like total video views, total subscribers, total videos, total likes etc.
  
-    const Videos = await Video.find({_id: req.user._id}, "views _id")
+    const Videos = await Video.find({owner: new mongoose.Types.ObjectId(req.user._id)}, "views _id")
     const totalVideos = Videos.length;
     const totalViews = Videos.reduce((sum, v)=> sum + (v.views || 0), 0 )
     
     const videosId = Videos.map(v => (v._id));
-
+            
     const totalLikes =  await Like.countDocuments(
         {
-            video : { $in: {videosId}}
+            video : { $in: videosId}
         }
     )
 

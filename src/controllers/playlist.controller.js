@@ -1,7 +1,7 @@
 import mongoose, {isValidObjectId} from "mongoose"
 import {Playlist} from "../models/playlist.model.js"
-import {ApiErrors} from "../utils/ApiError.js"
-import {ApiResponse} from "../utils/ApiResponse.js"
+import {ApiErrors} from "../utils/apiErrors.js"
+import {ApiResponse} from "../utils/apiResponce.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 
 
@@ -13,11 +13,11 @@ const createPlaylist = asyncHandler(async (req, res) => {
     if(!name)
     {
         throw new ApiErrors(400, "Playlist name is required")
-    }
+    } 
     
    const playlist =  await Playlist.create({
         name : name,
-        description : description,
+        description : description || null,
         owner : owner
     })
 
@@ -52,7 +52,7 @@ const getPlaylistById = asyncHandler(async (req, res) => {
     const {playlistId} = req.params
     //TODO: get playlist by id
 
-    const playlist = await Playlist.aggigate([
+    const playlist = await Playlist.aggregate([
         {
             $match :  {
                 _id : new mongoose.Types.ObjectId(playlistId)
@@ -173,6 +173,9 @@ const updatePlaylist = asyncHandler(async (req, res) => {
         {
             name : name,
             description : description || null
+        },
+        {
+            new:true
         }
     )
 

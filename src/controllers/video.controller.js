@@ -2,7 +2,7 @@ import mongoose, { isValidObjectId } from "mongoose";
 import { Video } from "../models/video.model.js";
 import { User } from "../models/user.model.js";
 import { ApiErrors } from "../utils/apiErrors.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
+import { ApiResponse } from "../utils/apiResponce.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import {
     uploadOnCloudinary,
@@ -65,6 +65,10 @@ const publishAVideo = asyncHandler(async (req, res) => {
 
     const videoFile = req.files?.videoFile?.[0];
     const thumbnail = req.files?.thumbnail?.[0];
+    
+    if (!title) {
+        throw new ApiErrors(400, "title is required");
+    }
 
     if (!videoFile) {
         throw new ApiErrors(400, "Video file is missing");
@@ -84,7 +88,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
             throw new ApiErrors(500, "Something wrong at uploading thumbnail");
         }
     } else {
-        thumbnailUrl = cloudinary.url(videoUpload.public_id + ".jpg", {
+        thumbnailUrl = cloudinary.url(videoUpload.public_id , {
             resource_type: "video",
             format: "jpg",
             width: 300,
@@ -97,14 +101,11 @@ const publishAVideo = asyncHandler(async (req, res) => {
         }
     }
 
-    if (!title) {
-        throw new ApiErrors(400, "title is required");
-    }
     const newVideo = await Video.create({
         videoFile: videoUpload.secure_url,
         videoPublicId: videoUpload.public_id,
         thumbnail: thumbnailUpload ? thumbnailUpload?.secure_url : thumbnailUrl,
-        thumbnailPublicId: thumbnailUpload ? thumbnailUpload?.public_id : null,
+        thumbnailPublicId: thumbnailUpload?.public_id || null,
 
         duration: videoUpload.duration,
         title: title,
@@ -123,21 +124,72 @@ const publishAVideo = asyncHandler(async (req, res) => {
 
 const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params;
+    const userId = req.user?._id; // logged-in user from auth middleware
 
     if (!videoId) {
         throw new ApiErrors(400, "No video id is found");
     }
 
-    const video = await Video.findById(videoId);
+    const video = await Video.aggregate([
+        {
+            $match: { _id: new mongoose.Types.ObjectId(videoId) }
+        },
+        // lookup likes
+        {
+            $lookup: {
+                from: "likes",
+                localField: "_id",
+                foreignField: "video",
+                as: "likes"
+            }
+        },
+        // lookup owner (user info)
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "owner"
+            }
+        },
+        { $unwind: "$owner" }, // convert owner array → object
+        {
+            $addFields: {
+                likesCount: { $size: "$likes" },
+                isLiked: {
+                    $in: [new mongoose.Types.ObjectId(userId), "$likes.likedBy"]
+                }
+            }
+        },
+        {
+            $project: {
+                videoFile: 1,
+                videoPublicId: 1,
+                thumbnail: 1,
+                thumbnailPublicId: 1,
+                title: 1,
+                description: 1,
+                duration: 1,
+                isPublish: 1,
+                views: 1,
+                createdAt: 1,
+                likesCount: 1,
+                isLiked: 1,
+                "owner.username": 1,
+                "owner.avatar": 1
+            }
+        }
+    ]);
 
-    if (!video) {
-        throw new ApiErrors(400, "No video Found");
+    if (!video || video.length === 0) {
+        throw new ApiErrors(404, "No video found");
     }
 
     return res
         .status(200)
-        .json(new ApiResponse(200, video, "Video Fetch Successfully"));
+        .json(new ApiResponse(200, video[0], "Video Fetch Successfully"));
 });
+
 
 const updateVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params;
@@ -210,6 +262,11 @@ const deleteVideo = asyncHandler(async (req, res) => {
     }
 
     const video = await Video.findById(videoId);
+
+    if (!video) {
+    throw new ApiErrors(404, "Video not found");
+    }
+
 
     if (video.owner.toString() !== userId.toString()) {
         throw new ApiErrors(403, "User is not alllow to update video details");

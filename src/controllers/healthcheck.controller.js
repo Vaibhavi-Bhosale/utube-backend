@@ -1,5 +1,4 @@
-import {apiErrors} from "../utils/ApiErro0sr.js"
-import {ApiResponse} from "../utils/ApiResponse.js"
+import {ApiResponse} from "../utils/apiResponce.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 
 

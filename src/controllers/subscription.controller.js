@@ -1,8 +1,7 @@
-import mongoose, {isValidObjectId} from "mongoose"
-import {User} from "../models/user.model.js"
+import mongoose from "mongoose"
 import { Subscription } from "../models/subscription.model.js"
-import {ApiErrors} from "../utils/ApiErrors.js"
-import {ApiResponse} from "../utils/ApiResponse.js"
+import {ApiErrors} from "../utils/apiErrors.js"
+import {ApiResponse} from "../utils/apiResponce.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 
 
@@ -12,15 +11,15 @@ const toggleSubscription = asyncHandler(async (req, res) => {
     // TODO: toggle subscription
 
     const isSubscribed = await Subscription.exists({
-        subscriber : userId,
-        channel : channelId
+         subscriber: new mongoose.Types.ObjectId(userId),
+         channel: new mongoose.Types.ObjectId(channelId)
     })
 
     if(isSubscribed)
     {
         const unsubscribe = await Subscription.deleteOne({
-             subscriber : userId,
-             channel : channelId
+              subscriber: new mongoose.Types.ObjectId(userId),
+              channel: new mongoose.Types.ObjectId(channelId)
         })
 
         if(!unsubscribe)
@@ -61,9 +60,9 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
     const {channelId} = req.params
 
     const subscriber = await Subscription.find({
-        channel : channelId
+        channel : new mongoose.Types.ObjectId(channelId)
     }).populate("subscriber", "username fullname avatar")
-
+ 
     return res
     .status(200)
     .json(
@@ -78,13 +77,22 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
 
     const subscribed = await Subscription.find({
          subscriber : subscriberId
-    }).populate("subscriber", "username fullname avatar")
+    }).populate("channel", "username fullname avatar")
 
+
+    
+    const subs = await Subscription.find();
+    console.log(subs)
+   
+   
+   
     return res
     .status(200)
     .json(
-        new ApiResponse(200, subscribed, "successfully fetch the channel subscriber")
+        new ApiResponse(200, subscribed, "successfully fetch the subscirbed channel")
     )
+ 
+
 })
 
 export {
