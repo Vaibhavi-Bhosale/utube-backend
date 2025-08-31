@@ -151,7 +151,45 @@ const deleteTweet = asyncHandler(async (req, res) => {
 })
 
 const getAllTweet = asyncHandler(async(req, res)=>{
-    const allTweet = await Tweet.find()
+    const allTweet = await Tweet.aggregate([
+        {
+            $lookup :{
+                from : "users",
+                localField : "owner",
+                foreignField : "_id",
+                as : "ownerDetails"
+            }
+        },
+         {
+            $unwind: "$ownerDetails"
+        },
+        {
+            $lookup : {
+                from : "likes",
+                localField : "_id",
+                foreignField : "tweet",
+                as : "likes"
+            }
+        },
+        {
+            $addFields : {
+                username : "$ownerDetails.username",
+                avatar : "$ownerDetails.avatar",
+                likeCount : {$size : "$likes"},
+                isLiked : {$in : [new mongoose.Types.ObjectId(req.user._id), "$likes.likedBy"]}
+            }
+        },
+        {
+            $project : {
+                content : 1,
+                avatar :1,
+                username : 1,
+                likeCount : 1,
+                isLiked : 1
+            }
+        }
+
+    ])
 
     return res
     .status(200)
