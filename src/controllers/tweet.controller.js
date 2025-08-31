@@ -150,9 +150,25 @@ const deleteTweet = asyncHandler(async (req, res) => {
     )
 })
 
+const getAllTweet = asyncHandler(async(req, res)=>{
+    const allTweet = await Tweet.find()
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            allTweet,
+             allTweet.length ? "All tweets fetched successfully" : "No tweets found"
+        )
+    )
+
+})
+
 export {
     createTweet,
     getUserTweets,
     updateTweet,
-    deleteTweet
+    deleteTweet,
+    getAllTweet
 }

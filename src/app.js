@@ -1,12 +1,13 @@
 import express, { urlencoded } from "express"
 import cookieParser from "cookie-parser";
 import cors from "cors"
+import errorHandler from "./middleware/errorhandler.middleware.js";
 
 const app = express()
 
 app.use(cors({
     origin : process.env.CORS_ORIGIN,
-    Credential : true
+    credentials : true
 }))
 
 app.use(express.json({limit:"16kb"}))
@@ -39,5 +40,6 @@ app.use("/api/v1/playlist", playlistRouter)
 app.use("/api/v1/dashboard", dashboardRouter)
 
 // http://localhost:8000/api/v1/users/register
+app.use(errorHandler);
 
 export default app 
