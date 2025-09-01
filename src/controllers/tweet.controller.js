@@ -150,6 +150,22 @@ const deleteTweet = asyncHandler(async (req, res) => {
     )
 })
 
+const getTweet = asyncHandler(async(req, res)=>{
+    const {tweetId} = req.params
+    const tweet = await Tweet.findOne({_id : tweetId})
+
+    if(!tweet)
+    {
+        throw new ApiErrors(404, "No Tweet Found")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, {tweet}, "Tweet Fetch Successfully")
+    )
+})
+
 const getAllTweet = asyncHandler(async(req, res)=>{
     const allTweet = await Tweet.aggregate([
         {
@@ -208,6 +224,7 @@ export {
     createTweet,
     getUserTweets,
     updateTweet,
+    getTweet,
     deleteTweet,
     getAllTweet
 }
