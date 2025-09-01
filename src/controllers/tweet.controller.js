@@ -185,7 +185,8 @@ const getAllTweet = asyncHandler(async(req, res)=>{
                 avatar :1,
                 username : 1,
                 likeCount : 1,
-                isLiked : 1
+                isLiked : 1,
+                owner : 1
             }
         }
 
