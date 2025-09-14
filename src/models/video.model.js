@@ -45,7 +45,7 @@ const videoSchema = new Schema(
        }
     },
     {
-        timestamp :true
+       timestamps: true
     }
 )
 

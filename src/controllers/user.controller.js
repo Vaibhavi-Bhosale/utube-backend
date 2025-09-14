@@ -392,20 +392,18 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
         .status(200)
         .json(new ApiResponse(200, user, "Avatar updated successfully"));
 });
-
 const getUserChannelProfile = asyncHandler(async (req, res) => {
-    const username = req.params.username;
-    const userId = req.user?._id;
-    console.log("\n Username : ", username);
+    const id = req.params.userId; // coming from URL
+    const userId = new mongoose.Types.ObjectId(req.user?._id); // current logged-in user
 
-    if (!username?.trim()) {
-        throw new ApiErrors(400, "Username is missing");
+    if (!id?.trim()) {
+        throw new ApiErrors(400, "User ID is missing");
     }
 
     const channel = await User.aggregate([
         {
             $match: {
-                username: username?.toLowerCase(),
+                _id: new mongoose.Types.ObjectId(id),
             },
         },
         {
@@ -426,12 +424,8 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         },
         {
             $addFields: {
-                subsciberCount: {
-                    $size: "$subscriber",
-                },
-                channelSubscribedToCount: {
-                    $size: "$subscribedTo",
-                },
+                subscriberCount: { $size: "$subscriber" },
+                channelSubscribedToCount: { $size: "$subscribedTo" },
                 isSubscribe: {
                     $cond: {
                         if: { $in: [userId, "$subscriber.subscriber"] },
@@ -443,9 +437,10 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         },
         {
             $project: {
+                username: 1,
                 fullname: 1,
                 email: 1,
-                subsciberCount: 1,
+                subscriberCount: 1,
                 channelSubscribedToCount: 1,
                 isSubscribe: 1,
                 avatar: 1,
@@ -455,15 +450,16 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     ]);
 
     if (!channel?.length) {
-        throw new ApiErrors(404, "No Cannel Exist");
+        throw new ApiErrors(404, "No Channel Exist");
     }
 
     return res
         .status(200)
         .json(
-            new ApiResponse(200, channel[0], "User channel fetch successfully")
+            new ApiResponse(200, channel[0], "User channel fetched successfully")
         );
 });
+
 
 const getWacthHistory = asyncHandler(async (req, res) => {
     //to easy for me

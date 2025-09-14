@@ -98,6 +98,11 @@ const updateTweet = asyncHandler(async (req, res) => {
 
     const {content} = req.body
 
+    if(!content)
+    {
+         throw new ApiErrors(404, "Tweet must not empty");
+    }
+
     console.log("BODY RECEIVED:", req.body);
 
 
@@ -152,9 +157,41 @@ const deleteTweet = asyncHandler(async (req, res) => {
 
 const getTweet = asyncHandler(async(req, res)=>{
     const {tweetId} = req.params
-    const tweet = await Tweet.findOne({_id : tweetId})
+    const tweet = await Tweet.aggregate([
+        {
+            $match : {_id :  new mongoose.Types.ObjectId(tweetId)}
+        },
+        {
+            $lookup : {
+               from:"users",
+               localField : "owner",
+               foreignField : "_id",
+               as : "ownerDetails"
+            }
+        },
+        {
+            $unwind:"$ownerDetails"
+        },
+        {
+            $addFields : {
+                username : "$ownerDetails.username",
+                avatar : "$ownerDetails.avatar",
+                fullname : "$ownerDetails.fullname"
+            }
+        },
+        {
+            $project : {
+                content : 1,
+                username : 1,
+                avatar : 1,
+                fullname :1,
+                 
+            }
+        }
 
-    if(!tweet)
+   ] )
+
+    if(tweet.length ===0)
     {
         throw new ApiErrors(404, "No Tweet Found")
     }
@@ -162,7 +199,7 @@ const getTweet = asyncHandler(async(req, res)=>{
     return res
     .status(200)
     .json(
-        new ApiResponse(200, {tweet}, "Tweet Fetch Successfully")
+        new ApiResponse(200, {tweet : tweet[0]}, "Tweet Fetch Successfully")
     )
 })
 

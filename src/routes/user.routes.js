@@ -55,7 +55,8 @@ router
     .route("/update-user-avatar")
     .patch(verifyJWT, upload.single("avatar"), updateUserAvatar);
 
-router.route("/c/:username").get(verifyJWT, getUserChannelProfile);
+router.route("/c/:username").get(verifyJWT);
+router.route("/c/:userId").get(getUserChannelProfile);
 router.route("/watch-history").get(verifyJWT, getWacthHistory);
 
 export default router;
