@@ -234,19 +234,37 @@ const updateVideo = asyncHandler(async (req, res) => {
             }
         }
     }
+    let updatedVideo
 
-    const updatedVideo = await Video.findByIdAndUpdate(
-        {
-            _id: videoId,
-        },
-        {
-            title: title,
-            description: description,
-            thumbnail: uploadThumnail?.secure_url || null,
-            thumbnailPublicId: uploadThumnail?.public_id || null,
-        },
-        { new: true }
-    );
+    if(uploadThumnail?.public_id)
+    {
+
+           updatedVideo = await Video.findByIdAndUpdate(
+            {
+                _id: videoId,
+            },
+            {
+                title: title,
+                description: description,
+                thumbnail: uploadThumnail?.secure_url,
+                thumbnailPublicId: uploadThumnail?.public_id,
+            },
+            { new: true }
+        );
+    }
+    else{
+         updatedVideo = await Video.findByIdAndUpdate(
+            {
+                _id: videoId,
+            },
+            {
+                title: title,
+                description: description,
+              
+            },
+            { new: true }
+        );
+    }
 
     return res
         .status(200)
